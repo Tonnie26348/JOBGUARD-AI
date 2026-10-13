@@ -1,5 +1,5 @@
 /* ==========================================================================
-   JOBGUARD AI — WhatsApp Inspired Design System
+   JOBGUARD AI — WhatsApp Unified Design System
    ========================================================================== */
 
 :root {
@@ -7,13 +7,15 @@
   --font-display: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
-  /* WhatsApp Color Palette */
-  --wa-teal-dark: #075E54;
+  /* Official WhatsApp Palette */
+  --wa-dark-teal: #075E54;
   --wa-teal: #128C7E;
   --wa-green: #25D366;
   --wa-light-green: #dcf8c6;
   --wa-chat-bg: #efeae2;
   --wa-panel-bg: #f0f2f5;
+  --wa-dark-surface: #111b21;
+  --wa-dark-card: #202c33;
 
   /* Neutral Slate / Dark Shades */
   --slate-50: #f8fafc;
@@ -52,8 +54,7 @@
   --shadow-sm: 0 1px 3px rgba(7, 94, 84, 0.08), 0 1px 2px rgba(7, 94, 84, 0.04);
   --shadow-md: 0 4px 6px -1px rgba(7, 94, 84, 0.08), 0 2px 4px -2px rgba(7, 94, 84, 0.04);
   --shadow-lg: 0 10px 15px -3px rgba(7, 94, 84, 0.08), 0 4px 6px -4px rgba(7, 94, 84, 0.04);
-  --shadow-xl: 0 20px 25px -5px rgba(7, 94, 84, 0.08), 0 8px 10px -6px rgba(7, 94, 84, 0.04);
-  --shadow-wa: 0 10px 25px -3px rgba(37, 211, 102, 0.22);
+  --shadow-wa: 0 10px 25px -3px rgba(37, 211, 102, 0.25);
 
   /* Radius */
   --radius-sm: 8px;
@@ -72,7 +73,7 @@
 
 html {
   font-family: var(--font-sans);
-  background-color: var(--slate-50);
+  background-color: var(--wa-panel-bg);
   color: var(--slate-800);
   scroll-behavior: smooth;
   text-rendering: optimizeLegibility;
@@ -108,18 +109,17 @@ a {
 }
 
 /* ==========================================================================
-   Header / Top Navigation (WhatsApp Teal Header Style)
+   Top Navigation (Official WhatsApp Header #075E54)
    ========================================================================== */
 
 .topbar {
   position: sticky;
   top: 0;
   z-index: 50;
-  background: rgba(7, 94, 84, 0.95);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--wa-dark-teal);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   height: 70px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .topbar-container {
@@ -143,10 +143,10 @@ a {
   height: 40px;
   border-radius: var(--radius-md);
   background: var(--wa-green);
-  color: var(--wa-teal-dark);
+  color: var(--wa-dark-teal);
   display: grid;
   place-items: center;
-  box-shadow: 0 4px 12px rgba(37, 211, 102, 0.35);
+  box-shadow: 0 3px 10px rgba(37, 211, 102, 0.4);
   transition: transform 0.2s ease;
 }
 
@@ -200,7 +200,7 @@ a {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: rgba(37, 211, 102, 0.15);
+  background: rgba(37, 211, 102, 0.18);
   border: 1px solid rgba(37, 211, 102, 0.4);
   color: #a7f3d0;
   font-size: 11px;
@@ -219,14 +219,14 @@ a {
 }
 
 /* ==========================================================================
-   Hero Section (WhatsApp Dark Teal & Green Gradient)
+   Hero Section (Continuous WhatsApp Teal Gradient)
    ========================================================================== */
 
 .hero {
   position: relative;
-  background: linear-gradient(135deg, var(--wa-teal-dark) 0%, var(--wa-teal) 55%, #0b5146 100%);
+  background: linear-gradient(135deg, var(--wa-dark-teal) 0%, var(--wa-teal) 60%, #0c4d44 100%);
   color: #ffffff;
-  padding: 80px 24px 90px;
+  padding: 84px 24px 92px;
   overflow: hidden;
 }
 
@@ -237,7 +237,7 @@ a {
   width: 550px;
   height: 550px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(37, 211, 102, 0.24) 0%, rgba(37, 211, 102, 0) 70%);
+  background: radial-gradient(circle, rgba(37, 211, 102, 0.22) 0%, rgba(37, 211, 102, 0) 70%);
   pointer-events: none;
 }
 
@@ -248,7 +248,7 @@ a {
   width: 500px;
   height: 500px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(18, 140, 126, 0.3) 0%, rgba(18, 140, 126, 0) 70%);
+  background: radial-gradient(circle, rgba(18, 140, 126, 0.28) 0%, rgba(18, 140, 126, 0) 70%);
   pointer-events: none;
 }
 
@@ -299,7 +299,7 @@ a {
 }
 
 .title-gradient {
-  background: linear-gradient(90deg, #a7f3d0 0%, #25d366 50%, #86efac 100%);
+  background: linear-gradient(90deg, #a7f3d0 0%, var(--wa-green) 50%, #86efac 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -325,7 +325,7 @@ a {
   align-items: center;
   gap: 10px;
   background: var(--wa-green);
-  color: var(--wa-teal-dark);
+  color: var(--wa-dark-teal);
   font-size: 15px;
   font-weight: 800;
   padding: 14px 26px;
@@ -415,7 +415,7 @@ a {
   background: var(--wa-green);
   display: grid;
   place-items: center;
-  color: var(--wa-teal-dark);
+  color: var(--wa-dark-teal);
   box-shadow: 0 8px 20px rgba(37, 211, 102, 0.35);
 }
 
@@ -490,8 +490,8 @@ a {
    ========================================================================== */
 
 .workspace-section {
-  padding: 72px 24px 90px;
-  background-color: var(--slate-50);
+  padding: 76px 24px 92px;
+  background-color: var(--wa-panel-bg);
 }
 
 .workspace-container {
@@ -596,7 +596,7 @@ a {
 }
 
 /* ==========================================================================
-   Form Card
+   Form Card (WhatsApp Clean Surface Styling)
    ========================================================================== */
 
 .form-card {
@@ -629,7 +629,7 @@ a {
   height: 44px;
   border-radius: var(--radius-md);
   background: #e6f4ea;
-  color: var(--wa-teal-dark);
+  color: var(--wa-dark-teal);
   display: grid;
   place-items: center;
 }
@@ -706,7 +706,7 @@ a {
 }
 
 .field-hint {
-  color: var(--wa-teal-dark);
+  color: var(--wa-dark-teal);
   background: #e6f4ea;
   padding: 2px 8px;
   border-radius: var(--radius-full);
@@ -726,7 +726,7 @@ a {
 .text-input:focus, .text-area:focus {
   outline: none;
   border-color: var(--wa-teal);
-  box-shadow: 0 0 0 3px rgba(18, 140, 126, 0.15);
+  box-shadow: 0 0 0 3px rgba(18, 140, 126, 0.16);
 }
 
 .text-input::placeholder, .text-area::placeholder {
@@ -827,7 +827,7 @@ a {
   align-items: center;
   gap: 10px;
   background: var(--wa-green);
-  color: var(--wa-teal-dark);
+  color: var(--wa-dark-teal);
   font-size: 15px;
   font-weight: 800;
   padding: 13px 24px;
@@ -924,7 +924,7 @@ a {
   height: 68px;
   border-radius: 50%;
   background: #e6f4ea;
-  color: var(--wa-teal-dark);
+  color: var(--wa-dark-teal);
   display: grid;
   place-items: center;
   margin-bottom: 18px;
@@ -1230,7 +1230,7 @@ a {
 .field-chip {
   background: #e6f4ea;
   border: 1px solid #bbf7d0;
-  color: var(--wa-teal-dark);
+  color: var(--wa-dark-teal);
   font-size: 11px;
   font-weight: 700;
   text-transform: capitalize;
@@ -1349,7 +1349,7 @@ a {
   height: 40px;
   border-radius: var(--radius-md);
   background: #e6f4ea;
-  color: var(--wa-teal-dark);
+  color: var(--wa-dark-teal);
   display: grid;
   place-items: center;
   flex-shrink: 0;
@@ -1382,7 +1382,7 @@ a {
 
 .widget-link:hover {
   gap: 9px;
-  color: var(--wa-teal-dark);
+  color: var(--wa-dark-teal);
 }
 
 /* ==========================================================================
@@ -1390,7 +1390,7 @@ a {
    ========================================================================== */
 
 .how-section {
-  padding: 90px 24px;
+  padding: 92px 24px;
   background: #ffffff;
   border-top: 1px solid var(--slate-200);
   border-bottom: 1px solid var(--slate-200);
@@ -1444,7 +1444,7 @@ a {
   height: 48px;
   border-radius: var(--radius-lg);
   background: #e6f4ea;
-  color: var(--wa-teal-dark);
+  color: var(--wa-dark-teal);
   display: grid;
   place-items: center;
   margin-bottom: 22px;
@@ -1469,8 +1469,8 @@ a {
    ========================================================================== */
 
 .safety-section {
-  padding: 90px 24px;
-  background-color: var(--slate-50);
+  padding: 92px 24px;
+  background-color: var(--wa-panel-bg);
 }
 
 .safety-container {
@@ -1567,15 +1567,15 @@ a {
 }
 
 /* ==========================================================================
-   Footer (WhatsApp Dark Theme Footer)
+   Footer (WhatsApp Dark Theme #111b21 & #202c33)
    ========================================================================== */
 
 .footer {
-  background: #0b141a;
+  background: var(--wa-dark-surface);
   color: #ffffff;
-  padding: 60px 24px 36px;
+  padding: 64px 24px 38px;
   margin-top: auto;
-  border-top: 1px solid rgba(37, 211, 102, 0.2);
+  border-top: 2px solid var(--wa-teal);
 }
 
 .footer-container {
@@ -1610,7 +1610,7 @@ a {
   align-items: center;
   gap: 24px;
   padding-bottom: 32px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   margin-bottom: 28px;
   flex-wrap: wrap;
 }
