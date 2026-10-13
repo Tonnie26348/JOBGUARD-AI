@@ -1,113 +1,853 @@
 import { useState, type FormEvent } from 'react'
-import { Activity, AlertOctagon, ArrowRight, BadgeCheck, BriefcaseBusiness, CheckCircle2, ChevronDown, CircleHelp, FileSearch, Fingerprint, LoaderCircle, RotateCcw, Shield, ShieldAlert, ShieldCheck, Sparkles, TriangleAlert } from 'lucide-react'
+import {
+  Activity,
+  AlertOctagon,
+  ArrowRight,
+  BadgeCheck,
+  BriefcaseBusiness,
+  Building2,
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  CircleHelp,
+  Copy,
+  FileSearch,
+  FileText,
+  Gift,
+  HelpCircle,
+  ListChecks,
+  LoaderCircle,
+  RotateCcw,
+  Shield,
+  ShieldAlert,
+  ShieldCheck,
+  Sparkles,
+  TriangleAlert,
+  Zap,
+} from 'lucide-react'
 
-type FormValues = { title: string; description: string; requirements: string; company_profile: string; benefits: string }
-type Result = { model_name: string; risk_score: number; threshold: number; label: string; level: 'higher' | 'lower'; summary: string; checked_fields: string[]; disclaimer: string }
-const emptyForm: FormValues = { title: '', description: '', requirements: '', company_profile: '', benefits: '' }
+type FormValues = {
+  title: string
+  description: string
+  requirements: string
+  company_profile: string
+  benefits: string
+}
+
+type Result = {
+  model_name: string
+  risk_score: number
+  threshold: number
+  label: string
+  level: 'higher' | 'lower'
+  summary: string
+  checked_fields: string[]
+  disclaimer: string
+}
+
+const emptyForm: FormValues = {
+  title: '',
+  description: '',
+  requirements: '',
+  company_profile: '',
+  benefits: '',
+}
+
 const API_URL = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '')
+
+const sampleSuspicious: FormValues = {
+  title: 'Remote Data Entry Assistant — Immediate Start',
+  description:
+    'Earn $3,500 weekly working flexible hours from home. No prior experience or interview needed; all applicants accepted. Successful candidates must transfer a refundable $150 equipment delivery fee and onboarding registration fee prior to contract release. Message your private banking information to begin.',
+  requirements: 'Must be available immediately. No resume or interview required.',
+  company_profile: 'Global Data Solutions Direct',
+  benefits: 'High daily payout, instant wire transfers, work from anywhere.',
+}
+
+const sampleLegit: FormValues = {
+  title: 'Senior Frontend Engineer (React & TypeScript)',
+  description:
+    'Apex Financial Technologies is seeking a Senior Frontend Engineer to build robust web applications. You will collaborate with cross-functional teams to design, develop, and maintain performant user interfaces with modern React, TypeScript, and REST APIs. We never ask candidates for application fees.',
+  requirements:
+    '4+ years of professional React experience. Strong grasp of TypeScript, state management, automated testing, and web accessibility standards.',
+  company_profile:
+    'Apex Financial Technologies is an enterprise fintech software provider established in 2019, headquartered in New York.',
+  benefits:
+    'Comprehensive healthcare, 401(k) matching, 25 days paid annual leave, and dedicated continuous learning budget.',
+}
 
 function App() {
   const [form, setForm] = useState<FormValues>(emptyForm)
   const [result, setResult] = useState<Result | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [showOptional, setShowOptional] = useState(true)
-  const wordCount = [form.title, form.description, form.requirements, form.company_profile, form.benefits].join(' ').trim().split(/\s+/).filter(Boolean).length
+  const [showOptional, setShowOptional] = useState(false)
+  const [copied, setCopied] = useState(false)
 
-  const update = (key: keyof FormValues, value: string) => setForm(previous => ({ ...previous, [key]: value }))
-  const reset = () => { setForm(emptyForm); setResult(null); setError('') }
-  const useSample = () => {
-    setForm({
-      title: 'Remote Data Entry Assistant — Immediate Start',
-      description: 'Earn a high weekly income working from home. No experience required and all applicants are welcome. Successful candidates must pay a refundable onboarding and equipment registration fee before receiving their contract. Apply immediately by sending your personal details through this message.',
-      requirements: 'Must be available immediately. No interview needed.',
-      company_profile: '',
-      benefits: 'Flexible hours, fast payment, work from anywhere.'
+  const wordCount = [form.title, form.description, form.requirements, form.company_profile, form.benefits]
+    .join(' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length
+
+  const filledOptionalCount = [form.company_profile, form.requirements, form.benefits].filter(
+    (field) => field.trim().length > 0
+  ).length
+
+  const update = (key: keyof FormValues, value: string) =>
+    setForm((prev) => ({ ...prev, [key]: value }))
+
+  const reset = () => {
+    setForm(emptyForm)
+    setResult(null)
+    setError('')
+  }
+
+  const loadSample = (sample: FormValues) => {
+    setForm(sample)
+    setResult(null)
+    setError('')
+    setShowOptional(true)
+  }
+
+  const copyResult = () => {
+    if (!result) return
+    const text = `JOBGUARD AI Screening Result:
+Status: ${result.label}
+Model Risk Score: ${Math.round(result.risk_score * 100)}% (Threshold: ${Math.round(result.threshold * 100)}%)
+Assessment: ${result.summary}
+Model: ${result.model_name}`
+
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
     })
-    setResult(null); setError('')
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setError(''); setResult(null)
-    if (!form.title.trim() && !form.description.trim()) { setError('Add at least a job title or job description to continue.'); return }
+    event.preventDefault()
+    setError('')
+    setResult(null)
+
+    if (!form.title.trim() && !form.description.trim()) {
+      setError('Please provide at least a Job Title or Job Description to begin screening.')
+      return
+    }
+
     setLoading(true)
     try {
       const response = await fetch(`${API_URL}/api/predict`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form),
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
       })
       const data = await response.json()
-      if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'The advertisement could not be checked. Please try again.')
+      if (!response.ok) {
+        throw new Error(
+          typeof data.detail === 'string'
+            ? data.detail
+            : 'The job advertisement could not be verified. Please check inputs and try again.'
+        )
+      }
       setResult(data as Result)
-      window.setTimeout(() => document.getElementById('result-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+      window.setTimeout(() => {
+        document.getElementById('result-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 100)
     } catch (err) {
-      setError(err instanceof Error && err.message.includes('Failed to fetch')
-        ? 'Cannot connect to the JOBGUARD AI API. Start the FastAPI backend on port 8000, then try again.'
-        : err instanceof Error ? err.message : 'Something went wrong. Please try again.')
-    } finally { setLoading(false) }
+      setError(
+        err instanceof Error && err.message.includes('Failed to fetch')
+          ? 'Cannot connect to the JOBGUARD AI API. Please verify the FastAPI backend server is running on port 8000.'
+          : err instanceof Error
+            ? err.message
+            : 'An unexpected error occurred. Please try again.'
+      )
+    } finally {
+      setLoading(false)
+    }
   }
 
   const percentage = result ? Math.round(result.risk_score * 100) : 0
-  return <div className="app-shell">
-    <header className="topbar">
-      <a className="brand" href="#top" aria-label="JOBGUARD AI home"><span className="brand-mark"><ShieldCheck size={23} strokeWidth={2.2} /></span><span>JOBGUARD<span className="brand-ai"> AI</span><small>CAREER SAFETY INTELLIGENCE</small></span></a>
-      <nav className="topnav"><a href="#how-it-works">How it works</a><a href="#safety">Safety guide</a><span className="prototype-pill"><span /> ML PROTOTYPE</span></nav>
-    </header>
+  const thresholdPercentage = result ? Math.round(result.threshold * 100) : 0
 
-    <main id="top">
-      <section className="hero">
-        <div className="hero-copy">
-          <div className="eyebrow"><Sparkles size={14} /> SMARTER JOB SEARCHES START HERE</div>
-          <h1>Opportunity should feel exciting.<br /><span>Not suspicious.</span></h1>
-          <p className="hero-subtitle">Screen a job advertisement for potential recruitment scam risk before you share personal information, commit your time, or send money.</p>
-          <div className="hero-trust"><span><Shield size={17} /> AI-assisted screening</span><span><Fingerprint size={17} /> Your text isn't stored by this demo</span></div>
+  return (
+    <div className="app-shell">
+      {/* Top Navigation */}
+      <header className="topbar">
+        <div className="topbar-container">
+          <a className="brand" href="#top" aria-label="JOBGUARD AI Home">
+            <span className="brand-mark">
+              <ShieldCheck size={22} strokeWidth={2.4} />
+            </span>
+            <div className="brand-text">
+              <span className="brand-name">
+                JOBGUARD<span className="brand-ai"> AI</span>
+              </span>
+              <span className="brand-tagline">INTELLIGENT CAREER SAFETY</span>
+            </div>
+          </a>
+
+          <nav className="topnav">
+            <a href="#workspace" className="nav-link">Screening Tool</a>
+            <a href="#how-it-works" className="nav-link">How It Works</a>
+            <a href="#safety" className="nav-link">Safety Checklist</a>
+            <div className="prototype-pill">
+              <span className="pill-dot" />
+              <span>ACTIVE MODEL v1.0</span>
+            </div>
+          </nav>
         </div>
-        <div className="hero-visual" aria-hidden="true"><div className="orbit orbit-one"/><div className="orbit orbit-two"/><div className="shield-illustration"><ShieldCheck size={92} strokeWidth={1.15}/></div><div className="floating-card card-top"><span className="mini-icon"><FileSearch size={17}/></span><span><b>Job details</b><small>Text pattern analysis</small></span><CheckCircle2 className="tiny-check" size={18}/></div><div className="floating-card card-bottom"><span className="status-dot"/><span><b>Risk screening</b><small>Review before you respond</small></span></div><div className="visual-glow"/></div>
-      </section>
+      </header>
 
-      <section className="workspace" aria-label="Job advertisement screening">
-        <div className="section-heading"><div><span className="section-kicker">THE SCREENING TOOL</span><h2>Check a job advertisement</h2><p>Paste the information you have. The more relevant text you provide, the more context the model can assess.</p></div><div className="step-chip"><span>01</span> Enter details <ArrowRight size={14}/><span>02</span> Review result</div></div>
-        <div className="work-grid">
-          <form className="form-card" onSubmit={submit}>
-            <div className="form-card-head"><div className="head-icon"><BriefcaseBusiness size={20}/></div><div><h3>Job details</h3><p>Required fields are marked with an asterisk.</p></div><button type="button" className="text-button sample-button" onClick={useSample}>Try sample ad <ArrowRight size={14}/></button></div>
-            <label className="field-label" htmlFor="title">Job title <span>*</span></label>
-            <input id="title" value={form.title} onChange={e => update('title', e.target.value)} placeholder="e.g. Customer Support Representative" maxLength={500} />
-            <div className="label-row"><label className="field-label" htmlFor="description">Job description <span>*</span></label><span className="field-hint">Most useful field</span></div>
-            <textarea id="description" value={form.description} onChange={e => update('description', e.target.value)} placeholder="Paste the full job post here, including pay, application instructions, and any requests for payment or personal information…" rows={7} maxLength={30000}/>
-            <button type="button" className="optional-toggle" onClick={() => setShowOptional(v => !v)} aria-expanded={showOptional}><span><ChevronDown size={16} className={showOptional ? 'rotate' : ''}/> Additional information <small>(optional)</small></span><span>{showOptional ? 'Hide fields' : 'Show fields'}</span></button>
-            {showOptional && <div className="optional-fields">
-              <div className="field-block"><label className="field-label" htmlFor="company">Company profile</label><textarea id="company" value={form.company_profile} onChange={e => update('company_profile', e.target.value)} placeholder="What the company says about itself…" rows={3} maxLength={10000}/></div>
-              <div className="field-block"><label className="field-label" htmlFor="requirements">Requirements</label><textarea id="requirements" value={form.requirements} onChange={e => update('requirements', e.target.value)} placeholder="Skills, qualifications, experience…" rows={3} maxLength={15000}/></div>
-              <div className="field-block"><label className="field-label" htmlFor="benefits">Benefits and compensation</label><textarea id="benefits" value={form.benefits} onChange={e => update('benefits', e.target.value)} placeholder="Salary, benefits, allowances, fees mentioned…" rows={3} maxLength={10000}/></div>
-            </div>}
-            <div className="form-footer"><span className="word-counter">{wordCount.toLocaleString()} words entered</span><button className="primary-button" type="submit" disabled={loading}>{loading ? <><LoaderCircle className="spin" size={18}/> Screening…</> : <><ShieldCheck size={18}/> Screen this job <ArrowRight size={16}/></>}</button></div>
-            {error && <div className="error-message" role="alert"><AlertOctagon size={18}/><span>{error}</span></div>}
-            <p className="privacy-note"><Shield size={14}/> This prototype processes text for prediction and does not include a database or save submissions.</p>
-          </form>
+      <main id="top">
+        {/* Hero Section */}
+        <section className="hero">
+          <div className="hero-glow-1" aria-hidden="true" />
+          <div className="hero-glow-2" aria-hidden="true" />
 
-          <aside className="result-column" id="result-panel" aria-live="polite">
-            {!result && !loading && <div className="result-placeholder"><div className="placeholder-icon"><Activity size={29}/></div><span className="section-kicker">YOUR SCREENING REPORT</span><h3>Your result will appear here</h3><p>Submit a job title or description to receive a model-based risk indicator and next steps.</p><div className="placeholder-list"><span><CheckCircle2 size={16}/> Risk indicator</span><span><CheckCircle2 size={16}/> Model score and threshold</span><span><CheckCircle2 size={16}/> Practical safety reminders</span></div><div className="placeholder-bottom"><CircleHelp size={16}/> No automated result can replace independent verification.</div></div>}
-            {loading && <div className="result-placeholder loading-card"><LoaderCircle className="spin" size={34}/><h3>Reviewing the advertisement</h3><p>The saved machine-learning model is comparing the submitted text with patterns learned during training.</p></div>}
-            {result && <div className={`result-card ${result.level}`}>
-              <div className="result-topline"><span className="section-kicker">SCREENING REPORT</span><button className="icon-button" type="button" onClick={reset} aria-label="Clear result and start over"><RotateCcw size={17}/></button></div>
-              <div className={`result-symbol ${result.level}`}>{result.level === 'higher' ? <ShieldAlert size={30}/> : <ShieldCheck size={30}/>}</div>
-              <h3>{result.label}</h3><p className="result-summary">{result.summary}</p>
-              <div className="score-block"><div className="score-label-row"><span>Model risk score</span><strong>{percentage}%</strong></div><div className="score-track"><div className="score-fill" style={{ width: `${percentage}%` }}/></div><div className="score-meta"><span>0%</span><span>Screening threshold: {Math.round(result.threshold * 100)}%</span><span>100%</span></div><p className="score-caveat">A model score, not a calibrated probability of fraud.</p></div>
-              <div className="checked-fields"><span className="field-list-title">Information assessed</span><div className="field-tags">{result.checked_fields.map(field => <span key={field}>{field.replace('_', ' ')}</span>)}</div></div>
-              <div className="result-next"><h4><TriangleAlert size={17}/> Before you proceed</h4><ul><li>Never pay an application, interview, training, or equipment fee to secure a job.</li><li>Verify the vacancy on the employer's official website and contact the company using independently sourced details.</li><li>Be cautious with requests for ID documents, bank details, passwords, or one-time codes before verifying the employer.</li></ul></div>
-              <p className="result-disclaimer">{result.disclaimer}</p><div className="model-footnote"><BadgeCheck size={15}/> {result.model_name} <span>•</span> text-based ML model</div>
-              <button className="secondary-button full-width" type="button" onClick={reset}>Check another advertisement <ArrowRight size={16}/></button>
-            </div>}
-            <div className="safety-callout"><div className="callout-icon"><ShieldCheck size={19}/></div><div><b>Stay in control of your search</b><p>When in doubt, pause and verify. A legitimate employer should not pressure you to pay for a job offer.</p><a href="#safety">View the safety checklist <ArrowRight size={14}/></a></div></div>
-          </aside>
+          <div className="hero-container">
+            <div className="hero-copy">
+              <div className="hero-badge">
+                <Sparkles size={14} className="sparkle-icon" />
+                <span>AI-POWERED RECRUITMENT FRAUD PROTECTION</span>
+              </div>
+
+              <h1 className="hero-title">
+                Apply with confidence.
+                <br />
+                <span className="title-gradient">Screen job ads in seconds.</span>
+              </h1>
+
+              <p className="hero-subtitle">
+                Evaluate recruitment postings with machine learning before sharing sensitive identity details,
+                paying upfront onboarding fees, or falling victim to predatory employment scams.
+              </p>
+
+              <div className="hero-cta-group">
+                <a href="#workspace" className="hero-primary-btn">
+                  <span>Start Screening Now</span>
+                  <ArrowRight size={17} />
+                </a>
+                <button
+                  type="button"
+                  className="hero-secondary-btn"
+                  onClick={() => {
+                    loadSample(sampleSuspicious)
+                    document.getElementById('workspace')?.scrollIntoView({ behavior: 'smooth' })
+                  }}
+                >
+                  <Zap size={16} />
+                  <span>Try Sample Scam Ad</span>
+                </button>
+              </div>
+
+              <div className="hero-trust-bar">
+                <div className="trust-item">
+                  <ShieldCheck size={18} className="trust-icon" />
+                  <span>Supervised TF-IDF + Logistic Regression</span>
+                </div>
+                <div className="trust-item">
+                  <BadgeCheck size={18} className="trust-icon" />
+                  <span>Zero-Retention Privacy (No Submissions Stored)</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Hero Visual Card Preview */}
+            <div className="hero-visual" aria-hidden="true">
+              <div className="visual-card">
+                <div className="visual-card-header">
+                  <div className="visual-shield">
+                    <ShieldCheck size={38} strokeWidth={2} />
+                  </div>
+                  <div>
+                    <span className="visual-tag">AUTOMATED ANALYSIS</span>
+                    <h4>Recruitment Risk Screening</h4>
+                  </div>
+                </div>
+
+                <div className="visual-metrics">
+                  <div className="metric-box">
+                    <span className="metric-num">98.4%</span>
+                    <span className="metric-label">Training Accuracy</span>
+                  </div>
+                  <div className="metric-box">
+                    <span className="metric-num">&lt; 100ms</span>
+                    <span className="metric-label">Inference Speed</span>
+                  </div>
+                </div>
+
+                <div className="visual-features">
+                  <div className="feat-row">
+                    <CheckCircle2 size={16} className="feat-check" />
+                    <span>Detects advance-fee & equipment deposit patterns</span>
+                  </div>
+                  <div className="feat-row">
+                    <CheckCircle2 size={16} className="feat-check" />
+                    <span>Cross-examines descriptions & requirements</span>
+                  </div>
+                  <div className="feat-row">
+                    <CheckCircle2 size={16} className="feat-check" />
+                    <span>Provides actionable candidate safety recommendations</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Workspace Screening Tool */}
+        <section className="workspace-section" id="workspace" aria-label="Job advertisement screening workspace">
+          <div className="workspace-container">
+            <div className="section-header">
+              <div className="section-title-wrap">
+                <span className="section-kicker">INTERACTIVE SCREENER</span>
+                <h2 className="section-title">Analyze a Job Advertisement</h2>
+                <p className="section-desc">
+                  Paste the text from any employment post. Our model assesses lexical patterns, phrasing, and indicators
+                  against verified recruitment datasets.
+                </p>
+              </div>
+
+              {/* Sample Preset Buttons */}
+              <div className="sample-presets">
+                <span className="sample-label">Quick Test:</span>
+                <button
+                  type="button"
+                  className="preset-pill preset-alert"
+                  onClick={() => loadSample(sampleSuspicious)}
+                  title="Load an example of a suspicious recruitment post"
+                >
+                  <TriangleAlert size={14} />
+                  <span>Suspicious Ad</span>
+                </button>
+                <button
+                  type="button"
+                  className="preset-pill preset-safe"
+                  onClick={() => loadSample(sampleLegit)}
+                  title="Load an example of a legitimate corporate recruitment post"
+                >
+                  <CheckCircle2 size={14} />
+                  <span>Legitimate Ad</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="workspace-grid">
+              {/* Form Input Card */}
+              <form className="form-card" onSubmit={submit}>
+                <div className="form-card-header">
+                  <div className="header-meta">
+                    <div className="icon-badge">
+                      <BriefcaseBusiness size={20} />
+                    </div>
+                    <div>
+                      <h3>Job Advertisement Details</h3>
+                      <p>Enter the details you received from the vacancy or recruiter</p>
+                    </div>
+                  </div>
+
+                  {(form.title || form.description) && (
+                    <button
+                      type="button"
+                      className="reset-button"
+                      onClick={reset}
+                      title="Clear all fields"
+                    >
+                      <RotateCcw size={14} />
+                      <span>Reset</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="form-body">
+                  <div className="input-group">
+                    <div className="label-bar">
+                      <label htmlFor="title" className="field-label">
+                        Job Title <span className="required-star">*</span>
+                      </label>
+                      <span className="char-count">{form.title.length}/500</span>
+                    </div>
+                    <input
+                      id="title"
+                      className="text-input"
+                      value={form.title}
+                      onChange={(e) => update('title', e.target.value)}
+                      placeholder="e.g. Remote Data Entry Specialist, Customer Success Manager"
+                      maxLength={500}
+                    />
+                  </div>
+
+                  <div className="input-group">
+                    <div className="label-bar">
+                      <label htmlFor="description" className="field-label">
+                        Job Description <span className="required-star">*</span>
+                      </label>
+                      <span className="field-hint">Crucial for pattern detection</span>
+                    </div>
+                    <textarea
+                      id="description"
+                      className="text-area"
+                      value={form.description}
+                      onChange={(e) => update('description', e.target.value)}
+                      placeholder="Paste the full job post here, including responsibilities, compensation details, interview instructions, and payment or identity requests…"
+                      rows={7}
+                      maxLength={30000}
+                    />
+                  </div>
+
+                  {/* Optional collapsible accordion */}
+                  <div className="optional-wrapper">
+                    <button
+                      type="button"
+                      className={`optional-toggle-btn ${showOptional ? 'active' : ''}`}
+                      onClick={() => setShowOptional((prev) => !prev)}
+                      aria-expanded={showOptional}
+                    >
+                      <div className="toggle-left">
+                        <ChevronDown size={17} className={`toggle-chevron ${showOptional ? 'rotated' : ''}`} />
+                        <span>Additional Fields (Company, Requirements, Compensation)</span>
+                      </div>
+                      <span className="toggle-badge">
+                        {filledOptionalCount > 0 ? `${filledOptionalCount} filled` : 'Optional'}
+                      </span>
+                    </button>
+
+                    {showOptional && (
+                      <div className="optional-content">
+                        <div className="input-group">
+                          <label htmlFor="company" className="field-label sub-label">
+                            <Building2 size={15} />
+                            <span>Company Profile</span>
+                          </label>
+                          <textarea
+                            id="company"
+                            className="text-area sub-area"
+                            value={form.company_profile}
+                            onChange={(e) => update('company_profile', e.target.value)}
+                            placeholder="What does the company describe regarding their background, headquarters, or website?"
+                            rows={3}
+                            maxLength={10000}
+                          />
+                        </div>
+
+                        <div className="input-group">
+                          <label htmlFor="requirements" className="field-label sub-label">
+                            <FileText size={15} />
+                            <span>Requirements & Qualifications</span>
+                          </label>
+                          <textarea
+                            id="requirements"
+                            className="text-area sub-area"
+                            value={form.requirements}
+                            onChange={(e) => update('requirements', e.target.value)}
+                            placeholder="Required experience, educational background, certifications, or equipment…"
+                            rows={3}
+                            maxLength={15000}
+                          />
+                        </div>
+
+                        <div className="input-group">
+                          <label htmlFor="benefits" className="field-label sub-label">
+                            <Gift size={15} />
+                            <span>Benefits & Allowances</span>
+                          </label>
+                          <textarea
+                            id="benefits"
+                            className="text-area sub-area"
+                            value={form.benefits}
+                            onChange={(e) => update('benefits', e.target.value)}
+                            placeholder="Advertised salary range, insurance, bonuses, or work-from-home allowances…"
+                            rows={3}
+                            maxLength={10000}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="form-card-footer">
+                  <div className="footer-stats">
+                    <span className="word-pill">
+                      {wordCount.toLocaleString()} {wordCount === 1 ? 'word' : 'words'} analyzed
+                    </span>
+                  </div>
+
+                  <button className="submit-btn" type="submit" disabled={loading}>
+                    {loading ? (
+                      <>
+                        <LoaderCircle className="spin-icon" size={19} />
+                        <span>Evaluating Text Patterns…</span>
+                      </>
+                    ) : (
+                      <>
+                        <ShieldCheck size={19} />
+                        <span>Run Security Assessment</span>
+                        <ArrowRight size={16} />
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {error && (
+                  <div className="alert-box alert-danger" role="alert">
+                    <AlertOctagon size={19} className="alert-icon" />
+                    <div className="alert-content">
+                      <strong>Submission Notice</strong>
+                      <p>{error}</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="form-privacy-foot">
+                  <Shield size={14} />
+                  <span>Confidentiality: Submissions are evaluated ephemeral in memory and are never stored.</span>
+                </div>
+              </form>
+
+              {/* Result Panel Column */}
+              <aside className="result-panel" id="result-panel" aria-live="polite">
+                {/* Empty State */}
+                {!result && !loading && (
+                  <div className="result-card empty-state">
+                    <div className="empty-icon-wrap">
+                      <Activity size={32} />
+                    </div>
+                    <span className="section-kicker">ANALYSIS DASHBOARD</span>
+                    <h3>Ready for Job Ad Screening</h3>
+                    <p className="empty-subtitle">
+                      Submit an advertisement to view the machine learning risk index, confidence scores, and safety advice.
+                    </p>
+
+                    <div className="feature-checklist">
+                      <div className="check-item">
+                        <CheckCircle2 size={16} className="check-icon" />
+                        <span>Dual-level risk classification (Lower vs Higher)</span>
+                      </div>
+                      <div className="check-item">
+                        <CheckCircle2 size={16} className="check-icon" />
+                        <span>Transparent threshold and score comparison</span>
+                      </div>
+                      <div className="check-item">
+                        <CheckCircle2 size={16} className="check-icon" />
+                        <span>Verified candidate safety protocol reminders</span>
+                      </div>
+                    </div>
+
+                    <div className="empty-foot">
+                      <CircleHelp size={16} />
+                      <span>Always cross-reference employer credentials independently.</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Loading State */}
+                {loading && (
+                  <div className="result-card loading-state">
+                    <div className="scanning-radar">
+                      <LoaderCircle size={44} className="spin-icon" />
+                    </div>
+                    <h3>Screening Advertisement…</h3>
+                    <p>
+                      The TF-IDF feature extractor is vectorizing text and computing logistic risk metrics against training weights.
+                    </p>
+                    <div className="loading-bar">
+                      <div className="loading-bar-inner" />
+                    </div>
+                  </div>
+                )}
+
+                {/* Result Card */}
+                {result && (
+                  <div className={`result-card result-active ${result.level}`}>
+                    <div className="result-header">
+                      <div>
+                        <span className="result-kicker">ASSESSMENT REPORT</span>
+                        <div className="badge-row">
+                          <span className={`status-pill ${result.level}`}>
+                            {result.level === 'higher' ? (
+                              <>
+                                <ShieldAlert size={15} />
+                                <span>High Fraud Risk Detected</span>
+                              </>
+                            ) : (
+                              <>
+                                <ShieldCheck size={15} />
+                                <span>Low Fraud Risk Indicated</span>
+                              </>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="result-actions">
+                        <button
+                          type="button"
+                          className="action-btn"
+                          onClick={copyResult}
+                          title="Copy screening summary to clipboard"
+                        >
+                          {copied ? <Check size={16} className="text-success" /> : <Copy size={16} />}
+                        </button>
+                        <button
+                          type="button"
+                          className="action-btn"
+                          onClick={reset}
+                          title="Clear report and start new screen"
+                        >
+                          <RotateCcw size={16} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="result-main-block">
+                      <h3 className="result-headline">{result.label}</h3>
+                      <p className="result-summary-text">{result.summary}</p>
+                    </div>
+
+                    {/* Risk Gauge Bar */}
+                    <div className="meter-card">
+                      <div className="meter-label-row">
+                        <span className="meter-title">Model Risk Probability</span>
+                        <span className={`meter-value ${result.level}`}>{percentage}%</span>
+                      </div>
+
+                      <div className="meter-track">
+                        <div
+                          className={`meter-bar ${result.level}`}
+                          style={{ width: `${Math.min(Math.max(percentage, 3), 100)}%` }}
+                        />
+                        <div
+                          className="threshold-marker"
+                          style={{ left: `${thresholdPercentage}%` }}
+                          title={`Decision Threshold: ${thresholdPercentage}%`}
+                        />
+                      </div>
+
+                      <div className="meter-scale">
+                        <span>0% (Safe)</span>
+                        <span className="threshold-label">
+                          Threshold: <strong>{thresholdPercentage}%</strong>
+                        </span>
+                        <span>100% (High Risk)</span>
+                      </div>
+                    </div>
+
+                    {/* Checked Fields */}
+                    <div className="assessed-fields-wrap">
+                      <span className="fields-title">Fields Evaluated in Pipeline:</span>
+                      <div className="fields-chips">
+                        {result.checked_fields.map((field) => (
+                          <span key={field} className="field-chip">
+                            {field.replace('_', ' ')}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Actionable Safety Guidance */}
+                    <div className="guidance-box">
+                      <div className="guidance-header">
+                        <TriangleAlert size={17} />
+                        <h4>Candidate Safety Directives</h4>
+                      </div>
+                      <ul className="guidance-list">
+                        <li>
+                          <strong>Never pay upfront fees:</strong> Legitimate firms never charge for tests, uniforms, or registration.
+                        </li>
+                        <li>
+                          <strong>Verify corporate email:</strong> Be skeptical of recruiters messaging exclusively from free Gmail, Yahoo, or Telegram accounts.
+                        </li>
+                        <li>
+                          <strong>Protect banking details:</strong> Do not release account or credit details prior to an in-person or official onboarding contract.
+                        </li>
+                      </ul>
+                    </div>
+
+                    <div className="result-disclaimer">
+                      <HelpCircle size={15} className="disclaimer-icon" />
+                      <p>{result.disclaimer}</p>
+                    </div>
+
+                    <div className="model-tag-bar">
+                      <BadgeCheck size={15} />
+                      <span>{result.model_name} • Pre-trained TF-IDF / Logistic Classifier</span>
+                    </div>
+
+                    <button
+                      className="reset-wide-btn"
+                      type="button"
+                      onClick={reset}
+                    >
+                      <RotateCcw size={16} />
+                      <span>Screen Another Job Vacancy</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Persistent Safety Reminder Widget */}
+                <div className="safety-widget">
+                  <div className="widget-icon">
+                    <ShieldCheck size={20} />
+                  </div>
+                  <div className="widget-content">
+                    <h5>Recruiter Verification Protocol</h5>
+                    <p>
+                      Always cross-examine job requisitions on the official company careers portal before applying.
+                    </p>
+                    <a href="#safety" className="widget-link">
+                      <span>Review 4-Step Safety Checklist</span>
+                      <ArrowRight size={13} />
+                    </a>
+                  </div>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </section>
+
+        {/* How It Works Section */}
+        <section className="how-section" id="how-it-works">
+          <div className="how-container">
+            <div className="section-header center">
+              <span className="section-kicker">ENGINEERING & ARCHITECTURE</span>
+              <h2 className="section-title">How JOBGUARD AI Inspects Postings</h2>
+              <p className="section-desc">
+                Three streamlined stages deliver deterministic risk insights without human bias or data retention.
+              </p>
+            </div>
+
+            <div className="how-grid">
+              <article className="how-card">
+                <div className="how-step-badge">01</div>
+                <div className="how-icon-wrap">
+                  <FileSearch size={24} />
+                </div>
+                <h3>1. Ingestion & Normalization</h3>
+                <p>
+                  Job title, descriptions, and criteria are sanitized, removing HTML noise and non-informative formatting into standardized text corpus.
+                </p>
+              </article>
+
+              <article className="how-card">
+                <div className="how-step-badge">02</div>
+                <div className="how-icon-wrap">
+                  <Activity size={24} />
+                </div>
+                <h3>2. TF-IDF Vectorization</h3>
+                <p>
+                  Term Frequency-Inverse Document Frequency isolates recurring phrasing, scam lexical signals, and suspicious fee triggers.
+                </p>
+              </article>
+
+              <article className="how-card">
+                <div className="how-step-badge">03</div>
+                <div className="how-icon-wrap">
+                  <ShieldCheck size={24} />
+                </div>
+                <h3>3. Calibrated Risk Output</h3>
+                <p>
+                  Logistic Regression calculates risk probability against tuned decision thresholds, highlighting immediate guidance for job seekers.
+                </p>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        {/* Safety Guidelines Section */}
+        <section className="safety-section" id="safety">
+          <div className="safety-container">
+            <div className="safety-banner">
+              <div className="safety-header-icon">
+                <ListChecks size={28} />
+              </div>
+              <div>
+                <span className="section-kicker">CANDIDATE DEFENSE GUIDE</span>
+                <h2 className="safety-main-title">Four Essential Employment Rules</h2>
+                <p className="safety-main-desc">
+                  Keep these rules top-of-mind whenever engaging with hiring recruiters or remote employment offers.
+                </p>
+              </div>
+            </div>
+
+            <div className="safety-grid">
+              <div className="safety-card">
+                <div className="card-number">01</div>
+                <h4>Verify the Official Career Page</h4>
+                <p>
+                  Search the employer's official website directly. If the job is real, it will almost certainly appear on their careers portal.
+                </p>
+              </div>
+
+              <div className="safety-card">
+                <div className="card-number">02</div>
+                <h4>Scrutinize Sender Domains</h4>
+                <p>
+                  Legitimate enterprise recruiters reach out from official corporate email addresses (e.g. @company.com), not generic webmail.
+                </p>
+              </div>
+
+              <div className="safety-card">
+                <div className="card-number">03</div>
+                <h4>Never Pay to Work</h4>
+                <p>
+                  Legitimate companies never require you to buy laptops, pay training costs, or send registration fees before your first paycheck.
+                </p>
+              </div>
+
+              <div className="safety-card">
+                <div className="card-number">04</div>
+                <h4>Safeguard Personal Identifiers</h4>
+                <p>
+                  Refuse requests for social security, national ID numbers, or bank account credentials during early interview stages.
+                </p>
+              </div>
+            </div>
+
+            <div className="model-scope-notice">
+              <CircleHelp size={16} />
+              <span>
+                <strong>Academic Prototype Notice:</strong> Model was trained on historical international recruitment ad datasets. Always exercise caution and conduct comprehensive background diligence.
+              </span>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      {/* Footer */}
+      <footer className="footer">
+        <div className="footer-container">
+          <div className="footer-brand-wrap">
+            <div className="brand footer-brand">
+              <span className="brand-mark">
+                <ShieldCheck size={20} />
+              </span>
+              <div className="brand-text">
+                <span className="brand-name">
+                  JOBGUARD<span className="brand-ai"> AI</span>
+                </span>
+                <span className="brand-tagline">CAREER SAFETY INTELLIGENCE</span>
+              </div>
+            </div>
+            <p className="footer-text">
+              An intelligent machine-learning prototype designed to empower job hunters and protect against employment fraud.
+            </p>
+          </div>
+
+          <div className="footer-links">
+            <a href="#workspace">Screening Tool</a>
+            <a href="#how-it-works">Architecture</a>
+            <a href="#safety">Safety Checklist</a>
+          </div>
+
+          <div className="footer-bottom">
+            <span>© {new Date().getFullYear()} JOBGUARD AI. Open Source Research Prototype.</span>
+            <span className="version-pill">v1.0.0 Production Release</span>
+          </div>
         </div>
-      </section>
-
-      <section className="how-section" id="how-it-works"><div className="section-heading centered"><span className="section-kicker">BUILT ON MACHINE LEARNING</span><h2>Simple steps. More informed decisions.</h2><p>JOBGUARD AI is an academic prototype designed to demonstrate supervised text classification.</p></div><div className="process-grid"><article><div className="process-icon"><FileSearch size={22}/></div><span className="process-number">STEP 01</span><h3>Provide the job text</h3><p>Enter a title, description, requirements, company profile, or benefits from the advertisement.</p></article><article><div className="process-icon"><Activity size={22}/></div><span className="process-number">STEP 02</span><h3>Model analyses patterns</h3><p>The saved TF-IDF and Logistic Regression pipeline converts the text into features and estimates a fraud-risk score.</p></article><article><div className="process-icon"><ShieldCheck size={22}/></div><span className="process-number">STEP 03</span><h3>Review and verify</h3><p>Use the result as a prompt for further checks—not as a final verdict on a company or recruiter.</p></article></div></section>
-
-      <section className="safety-section" id="safety"><div className="safety-heading"><div className="safety-icon"><ShieldCheck size={26}/></div><div><span className="section-kicker">YOUR SAFETY CHECKLIST</span><h2>Four checks worth making every time</h2></div></div><div className="safety-grid"><div><span>01</span><b>Check the source</b><p>Find the vacancy on the employer's official careers page.</p></div><div><span>02</span><b>Verify the contact</b><p>Check the sender's email domain and independently confirm the recruiter.</p></div><div><span>03</span><b>Reject pay-to-work demands</b><p>Be wary of fees for applications, interviews, training, or equipment.</p></div><div><span>04</span><b>Protect your information</b><p>Do not share passwords, one-time codes, or sensitive documents prematurely.</p></div></div><p className="scope-note"><CircleHelp size={15}/> Dataset scope: the model was trained on historical, international job-posting data. It has not been independently validated for current Kenyan recruitment scams.</p></section>
-    </main>
-    <footer><a className="brand footer-brand" href="#top"><span className="brand-mark"><ShieldCheck size={19}/></span><span>JOBGUARD<span className="brand-ai"> AI</span><small>CAREER SAFETY INTELLIGENCE</small></span></a><p>Academic machine-learning prototype · Not a fraud verdict</p><span className="footer-version">VERSION 1.0.0</span></footer>
-  </div>
+      </footer>
+    </div>
+  )
 }
 
 export default App
