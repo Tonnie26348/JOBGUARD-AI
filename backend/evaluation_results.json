@@ -1,0 +1,63 @@
+{
+  "selected_model": "Logistic Regression (balanced)",
+  "selection_rule": "highest validation fraudulent-class F1; tie-break by validation average precision",
+  "target_mapping": {
+    "f": "legitimate (0)",
+    "t": "fraudulent (1)"
+  },
+  "test_metrics": {
+    "accuracy": 0.981431334622824,
+    "fraud_precision": 0.8613861386138614,
+    "fraud_recall": 0.71900826446281,
+    "fraud_f1": 0.7837837837837838,
+    "fraud_average_precision": 0.872745453289987,
+    "fraud_roc_auc": 0.9839037512074702,
+    "confusion_matrix_labels": [
+      "actual legitimate",
+      "actual fraudulent"
+    ],
+    "confusion_matrix_rows_actual_cols_predicted": [
+      [
+        2450,
+        14
+      ],
+      [
+        34,
+        87
+      ]
+    ],
+    "classification_report": {
+      "legitimate": {
+        "precision": 0.9863123993558777,
+        "recall": 0.9943181818181818,
+        "f1-score": 0.9902991107518189,
+        "support": 2464.0
+      },
+      "fraudulent": {
+        "precision": 0.8613861386138614,
+        "recall": 0.71900826446281,
+        "f1-score": 0.7837837837837838,
+        "support": 121.0
+      },
+      "accuracy": 0.981431334622824,
+      "macro avg": {
+        "precision": 0.9238492689848695,
+        "recall": 0.8566632231404958,
+        "f1-score": 0.8870414472678013,
+        "support": 2585.0
+      },
+      "weighted avg": {
+        "precision": 0.9804647871509322,
+        "recall": 0.981431334622824,
+        "f1-score": 0.9806324358724642,
+        "support": 2585.0
+      }
+    }
+  },
+  "validation_threshold_details": {
+    "threshold_selected_on_validation": 0.6549999999999999,
+    "validation_f1_at_selected_threshold": 0.8807947019867549,
+    "validation_precision_at_selected_threshold": 0.95,
+    "validation_recall_at_selected_threshold": 0.8209876543209876
+  }
+}
