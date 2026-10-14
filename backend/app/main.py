@@ -38,7 +38,7 @@ allowed_origins = [
     item.strip()
     for item in os.getenv(
         "JOBGUARD_ALLOWED_ORIGINS",
-        "http://localhost:5173,http://127.0.0.1:5173",
+        "*",
     ).split(",")
     if item.strip()
 ]
@@ -81,11 +81,6 @@ DISCLAIMER = (
     "the employer, official website and contact details, and never pay a recruitment fee based "
     "only on this result."
 )
-
-
-@app.get("/")
-def root() -> dict[str, str]:
-    return {"name": "JOBGUARD AI API", "status": "ok", "docs": "/docs"}
 
 
 @app.get("/api/health")
@@ -141,3 +136,15 @@ def predict_job(payload: JobAdInput) -> PredictionResponse:
         checked_fields=[key for key, value in cleaned.items() if value],
         disclaimer=DISCLAIMER,
     )
+
+
+# Mount static frontend if built; otherwise fallback to root API info
+FRONTEND_DIST = Path(os.getenv("JOBGUARD_FRONTEND_DIST", str(APP_DIR.parent.parent / "frontend" / "dist")))
+if FRONTEND_DIST.exists() and (FRONTEND_DIST / "index.html").exists():
+    from fastapi.staticfiles import StaticFiles
+
+    app.mount("/", StaticFiles(directory=str(FRONTEND_DIST), html=True), name="frontend")
+else:
+    @app.get("/")
+    def root() -> dict[str, str]:
+        return {"name": "JOBGUARD AI API", "status": "ok", "docs": "/docs"}
