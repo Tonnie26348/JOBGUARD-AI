@@ -14,19 +14,29 @@ from pydantic import BaseModel, Field, field_validator
 APP_DIR = Path(__file__).resolve().parent
 MODEL_PATH = Path(os.getenv("JOBGUARD_MODEL_PATH", APP_DIR.parent / "jobguard_model.pkl"))
 
+# Global variable for lazy loading
+_model_bundle: dict[str, Any] | None = None
+
+
+def get_model_bundle() -> dict[str, Any]:
+    """Load the model once and cache it in memory."""
+    global _model_bundle
+    if _model_bundle is None:
+        if not MODEL_PATH.exists():
+            raise RuntimeError(f"Model file not found at {MODEL_PATH}")
+        try:
+            with MODEL_PATH.open("rb") as model_file:
+                _model_bundle = joblib.load(model_file)
+        except Exception as exc:
+            raise RuntimeError(f"Failed to deserialize model at {MODEL_PATH}: {exc}") from exc
+    return _model_bundle
+
 
 def clean_text(value: str | None) -> str:
     value = html.unescape(value or "")
     value = re.sub(r"<[^>]+>", " ", value)
     return re.sub(r"\s+", " ", value).strip()
 
-
-# Load once when the API starts; never retrain during a prediction request.
-try:
-    with MODEL_PATH.open("rb") as model_file:
-        bundle: dict[str, Any] = joblib.load(model_file)
-except Exception as exc:  # fail early with a useful startup error
-    raise RuntimeError(f"Could not load JOBGUARD model at {MODEL_PATH}: {exc}") from exc
 
 app = FastAPI(
     title="JOBGUARD AI API",
@@ -85,6 +95,8 @@ DISCLAIMER = (
 
 @app.get("/api/health")
 def health() -> dict[str, str | bool]:
+    # Call bundle loader to verify it works on health check
+    bundle = get_model_bundle()
     return {
         "status": "healthy",
         "model_loaded": True,
@@ -94,6 +106,7 @@ def health() -> dict[str, str | bool]:
 
 @app.post("/api/predict", response_model=PredictionResponse)
 def predict_job(payload: JobAdInput) -> PredictionResponse:
+    bundle = get_model_bundle()
     fields = {
         "title": payload.title,
         "description": payload.description,
@@ -145,6 +158,7 @@ if FRONTEND_DIST.exists() and (FRONTEND_DIST / "index.html").exists():
 
     app.mount("/", StaticFiles(directory=str(FRONTEND_DIST), html=True), name="frontend")
 else:
+
     @app.get("/")
     def root() -> dict[str, str]:
         return {"name": "JOBGUARD AI API", "status": "ok", "docs": "/docs"}
