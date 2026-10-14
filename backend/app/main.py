@@ -6,7 +6,6 @@ import re
 from pathlib import Path
 from typing import Any
 
-import joblib
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
@@ -19,9 +18,12 @@ _model_bundle: dict[str, Any] | None = None
 
 
 def get_model_bundle() -> dict[str, Any]:
-    """Load the model once and cache it in memory."""
+    """Load the model and heavy ML libraries only when needed."""
     global _model_bundle
     if _model_bundle is None:
+        # Move heavy imports inside to make WSGI startup instant
+        import joblib
+
         if not MODEL_PATH.exists():
             raise RuntimeError(f"Model file not found at {MODEL_PATH}")
         try:
@@ -40,21 +42,13 @@ def clean_text(value: str | None) -> str:
 
 app = FastAPI(
     title="JOBGUARD AI API",
-    description="ML-based recruitment-ad risk screening. Results are indicators, not proof of fraud.",
+    description="ML-based recruitment-ad risk screening.",
     version="1.0.0",
 )
 
-allowed_origins = [
-    item.strip()
-    for item in os.getenv(
-        "JOBGUARD_ALLOWED_ORIGINS",
-        "*",
-    ).split(",")
-    if item.strip()
-]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=["*"],
     allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Content-Type"],
@@ -87,20 +81,17 @@ class PredictionResponse(BaseModel):
 
 DISCLAIMER = (
     "This result is an automated screening aid, not proof that a job or employer is fraudulent "
-    "or legitimate. The score is not a calibrated real-world probability. Independently verify "
-    "the employer, official website and contact details, and never pay a recruitment fee based "
-    "only on this result."
+    "or legitimate. Independently verify the employer before proceeding."
 )
 
 
 @app.get("/api/health")
 def health() -> dict[str, str | bool]:
-    # Call bundle loader to verify it works on health check
-    bundle = get_model_bundle()
+    # We don't load the model here to keep health checks fast
     return {
         "status": "healthy",
-        "model_loaded": True,
-        "model_name": str(bundle.get("model_name", "Unknown model")),
+        "model_path": str(MODEL_PATH),
+        "model_exists": MODEL_PATH.exists()
     }
 
 
@@ -119,7 +110,7 @@ def predict_job(payload: JobAdInput) -> PredictionResponse:
     if not text:
         raise HTTPException(
             status_code=422,
-            detail="Enter at least a job title or job description before checking an advertisement.",
+            detail="Enter at least a job title or job description.",
         )
 
     try:
@@ -133,11 +124,11 @@ def predict_job(payload: JobAdInput) -> PredictionResponse:
     if higher_risk:
         label = "Higher risk — review carefully"
         level = "higher"
-        summary = "The text resembles patterns the model learned from known fraudulent job advertisements. Verify the opportunity before sharing information or proceeding."
+        summary = "The text resembles patterns the model learned from known fraudulent job advertisements."
     else:
         label = "Lower risk — still verify"
         level = "lower"
-        summary = "The model did not score this text above its selected screening threshold. This does not guarantee that the opportunity is safe."
+        summary = "The model did not score this text above its selected screening threshold."
 
     return PredictionResponse(
         model_name=str(bundle.get("model_name", "JOBGUARD AI text classifier")),
@@ -151,14 +142,12 @@ def predict_job(payload: JobAdInput) -> PredictionResponse:
     )
 
 
-# Mount static frontend if built; otherwise fallback to root API info
+# Mount static frontend if built
 FRONTEND_DIST = Path(os.getenv("JOBGUARD_FRONTEND_DIST", str(APP_DIR.parent.parent / "frontend" / "dist")))
 if FRONTEND_DIST.exists() and (FRONTEND_DIST / "index.html").exists():
     from fastapi.staticfiles import StaticFiles
-
     app.mount("/", StaticFiles(directory=str(FRONTEND_DIST), html=True), name="frontend")
 else:
-
     @app.get("/")
     def root() -> dict[str, str]:
-        return {"name": "JOBGUARD AI API", "status": "ok", "docs": "/docs"}
+        return {"name": "JOBGUARD AI API", "status": "ok", "frontend": "not_found_locally"}
