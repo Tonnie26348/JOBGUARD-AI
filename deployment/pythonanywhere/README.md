@@ -6,7 +6,7 @@
 Ensure you have pushed the latest code:
 ```powershell
 git add .
-git commit -m "chore: update deployment guide for direct WSGI wrapping"
+git commit -m "chore: update deployment guide with explicit site-packages path insertion"
 git push
 ```
 
@@ -33,22 +33,28 @@ Go to the **Web** tab on PythonAnywhere:
     *   Enter this path: `/home/Tonnie001/.virtualenvs/jobguard-venv`
     *   *(Make sure there is no red warning)*
 
-## 4. WSGI File Configuration (Foolproof Method)
-Click the link to **"WSGI configuration file"** in the Web tab. Replace its entire content with this direct snippet (which avoids any external module import issues):
+## 4. WSGI File Configuration (Foolproof Method with Explicit Path)
+Click the link to **"WSGI configuration file"** in the Web tab. Replace its entire content with this robust snippet (which explicitly links the virtualenv site-packages so FastAPI and a2wsgi are guaranteed to load):
 
 ```python
 import sys
 import os
 
-# 1. Add your backend folder to Python sys.path
+# 1. Explicitly load virtualenv site-packages so FastAPI, a2wsgi, etc. are found
+virtualenv_path = '/home/Tonnie001/.virtualenvs/jobguard-venv'
+site_packages = os.path.join(virtualenv_path, 'lib/python3.10/site-packages')
+if site_packages not in sys.path:
+    sys.path.insert(0, site_packages)
+
+# 2. Add your backend folder to Python sys.path
 project_home = '/home/Tonnie001/JOBGUARD-AI/backend'
 if project_home not in sys.path:
     sys.path.insert(0, project_home)
 
-# 2. Set the model path environment variable
+# 3. Set the model path environment variable
 os.environ['JOBGUARD_MODEL_PATH'] = os.path.join(project_home, 'jobguard_model.pkl')
 
-# 3. Import FastAPI app directly and wrap with a2wsgi (No separate wsgi.py needed)
+# 4. Import FastAPI app directly and wrap with a2wsgi
 from app.main import app
 from a2wsgi import ASGIMiddleware
 
