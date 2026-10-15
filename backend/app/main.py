@@ -6,32 +6,13 @@ import re
 from pathlib import Path
 from typing import Any
 
+import joblib
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 
 APP_DIR = Path(__file__).resolve().parent
 MODEL_PATH = Path(os.getenv("JOBGUARD_MODEL_PATH", APP_DIR.parent / "jobguard_model.pkl"))
-
-# Global variable for lazy loading
-_model_bundle: dict[str, Any] | None = None
-
-
-def get_model_bundle() -> dict[str, Any]:
-    """Load the model and heavy ML libraries only when needed."""
-    global _model_bundle
-    if _model_bundle is None:
-        # Move heavy imports inside to make WSGI startup instant
-        import joblib
-
-        if not MODEL_PATH.exists():
-            raise RuntimeError(f"Model file not found at {MODEL_PATH}")
-        try:
-            with MODEL_PATH.open("rb") as model_file:
-                _model_bundle = joblib.load(model_file)
-        except Exception as exc:
-            raise RuntimeError(f"Failed to deserialize model at {MODEL_PATH}: {exc}") from exc
-    return _model_bundle
 
 
 def clean_text(value: str | None) -> str:
@@ -40,15 +21,30 @@ def clean_text(value: str | None) -> str:
     return re.sub(r"\s+", " ", value).strip()
 
 
+# Load once when the API starts; never retrain during a prediction request.
+try:
+    with MODEL_PATH.open("rb") as model_file:
+        bundle: dict[str, Any] = joblib.load(model_file)
+except Exception as exc:  # fail early with a useful startup error
+    raise RuntimeError(f"Could not load JOBGUARD model at {MODEL_PATH}: {exc}") from exc
+
 app = FastAPI(
     title="JOBGUARD AI API",
-    description="ML-based recruitment-ad risk screening.",
+    description="ML-based recruitment-ad risk screening. Results are indicators, not proof of fraud.",
     version="1.0.0",
 )
 
+allowed_origins = [
+    item.strip()
+    for item in os.getenv(
+        "JOBGUARD_ALLOWED_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173",
+    ).split(",")
+    if item.strip()
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Content-Type"],
@@ -81,23 +77,28 @@ class PredictionResponse(BaseModel):
 
 DISCLAIMER = (
     "This result is an automated screening aid, not proof that a job or employer is fraudulent "
-    "or legitimate. Independently verify the employer before proceeding."
+    "or legitimate. The score is not a calibrated real-world probability. Independently verify "
+    "the employer, official website and contact details, and never pay a recruitment fee based "
+    "only on this result."
 )
+
+
+@app.get("/")
+def root() -> dict[str, str]:
+    return {"name": "JOBGUARD AI API", "status": "ok", "docs": "/docs"}
 
 
 @app.get("/api/health")
 def health() -> dict[str, str | bool]:
-    # We don't load the model here to keep health checks fast
     return {
         "status": "healthy",
-        "model_path": str(MODEL_PATH),
-        "model_exists": MODEL_PATH.exists()
+        "model_loaded": True,
+        "model_name": str(bundle.get("model_name", "Unknown model")),
     }
 
 
 @app.post("/api/predict", response_model=PredictionResponse)
 def predict_job(payload: JobAdInput) -> PredictionResponse:
-    bundle = get_model_bundle()
     fields = {
         "title": payload.title,
         "description": payload.description,
@@ -110,7 +111,7 @@ def predict_job(payload: JobAdInput) -> PredictionResponse:
     if not text:
         raise HTTPException(
             status_code=422,
-            detail="Enter at least a job title or job description.",
+            detail="Enter at least a job title or job description before checking an advertisement.",
         )
 
     try:
@@ -124,11 +125,11 @@ def predict_job(payload: JobAdInput) -> PredictionResponse:
     if higher_risk:
         label = "Higher risk — review carefully"
         level = "higher"
-        summary = "The text resembles patterns the model learned from known fraudulent job advertisements."
+        summary = "The text resembles patterns the model learned from known fraudulent job advertisements. Verify the opportunity before sharing information or proceeding."
     else:
         label = "Lower risk — still verify"
         level = "lower"
-        summary = "The model did not score this text above its selected screening threshold."
+        summary = "The model did not score this text above its selected screening threshold. This does not guarantee that the opportunity is safe."
 
     return PredictionResponse(
         model_name=str(bundle.get("model_name", "JOBGUARD AI text classifier")),
@@ -140,14 +141,3 @@ def predict_job(payload: JobAdInput) -> PredictionResponse:
         checked_fields=[key for key, value in cleaned.items() if value],
         disclaimer=DISCLAIMER,
     )
-
-
-# Mount static frontend if built
-FRONTEND_DIST = Path(os.getenv("JOBGUARD_FRONTEND_DIST", str(APP_DIR.parent.parent / "frontend" / "dist")))
-if FRONTEND_DIST.exists() and (FRONTEND_DIST / "index.html").exists():
-    from fastapi.staticfiles import StaticFiles
-    app.mount("/", StaticFiles(directory=str(FRONTEND_DIST), html=True), name="frontend")
-else:
-    @app.get("/")
-    def root() -> dict[str, str]:
-        return {"name": "JOBGUARD AI API", "status": "ok", "frontend": "not_found_locally"}
