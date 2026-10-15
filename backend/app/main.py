@@ -83,11 +83,6 @@ DISCLAIMER = (
 )
 
 
-@app.get("/")
-def root() -> dict[str, str]:
-    return {"name": "JOBGUARD AI API", "status": "ok", "docs": "/docs"}
-
-
 @app.get("/api/health")
 def health() -> dict[str, str | bool]:
     return {
@@ -141,3 +136,15 @@ def predict_job(payload: JobAdInput) -> PredictionResponse:
         checked_fields=[key for key, value in cleaned.items() if value],
         disclaimer=DISCLAIMER,
     )
+
+
+# Mount static frontend if built (MUST be after API routes); otherwise fallback to root API info
+FRONTEND_DIST = Path(os.getenv("JOBGUARD_FRONTEND_DIST", str(APP_DIR.parent.parent / "frontend" / "dist")))
+if FRONTEND_DIST.exists() and (FRONTEND_DIST / "index.html").exists():
+    from fastapi.staticfiles import StaticFiles
+
+    app.mount("/", StaticFiles(directory=str(FRONTEND_DIST), html=True), name="frontend")
+else:
+    @app.get("/")
+    def root() -> dict[str, str]:
+        return {"name": "JOBGUARD AI API", "status": "ok", "docs": "/docs"}
