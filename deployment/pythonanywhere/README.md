@@ -6,7 +6,7 @@
 Ensure you have pushed the latest code:
 ```powershell
 git add .
-git commit -m "chore: update deployment guide to use standard virtualenv"
+git commit -m "chore: update deployment guide for direct WSGI wrapping"
 git push
 ```
 
@@ -18,8 +18,7 @@ Open a **Bash Console** on PythonAnywhere and run:
 git clone https://github.com/Tonnie26348/JOBGUARD-AI.git
 cd JOBGUARD-AI
 
-# Create a standard virtualenv (This is the supported way for Web Apps)
-# This will create the env in /home/tonnie001/.virtualenvs/jobguard-venv
+# Create a standard virtualenv
 mkvirtualenv --python=/usr/bin/python3.10 jobguard-venv
 
 # Install dependencies inside the virtualenv
@@ -28,30 +27,33 @@ pip install -r backend/requirements.txt
 
 ## 3. Web App Configuration
 Go to the **Web** tab on PythonAnywhere:
-1.  **Source code:** `/home/tonnie001/JOBGUARD-AI/backend`
-2.  **Working directory:** `/home/tonnie001/JOBGUARD-AI/backend`
+1.  **Source code:** `/home/Tonnie001/JOBGUARD-AI/backend`
+2.  **Working directory:** `/home/Tonnie001/JOBGUARD-AI/backend`
 3.  **Virtualenv Section:**
-    *   Enter this path: `/home/tonnie001/.virtualenvs/jobguard-venv`
-    *   *(PythonAnywhere should now recognize it without errors)*
+    *   Enter this path: `/home/Tonnie001/.virtualenvs/jobguard-venv`
+    *   *(Make sure there is no red warning)*
 
-## 4. WSGI File Configuration
-Click the link to **"WSGI configuration file"** in the Web tab. Ensure it looks like this:
+## 4. WSGI File Configuration (Foolproof Method)
+Click the link to **"WSGI configuration file"** in the Web tab. Replace its entire content with this direct snippet (which avoids any external module import issues):
 
 ```python
 import sys
 import os
 
-# Add your project directory to the sys.path
-project_home = '/home/tonnie001/JOBGUARD-AI/backend'
+# 1. Add your backend folder to Python sys.path
+project_home = '/home/Tonnie001/JOBGUARD-AI/backend'
 if project_home not in sys.path:
     sys.path.insert(0, project_home)
 
-# Set environment variable for the model
+# 2. Set the model path environment variable
 os.environ['JOBGUARD_MODEL_PATH'] = os.path.join(project_home, 'jobguard_model.pkl')
 
-# Import the WSGI app (from wsgi.py)
-from wsgi import application
+# 3. Import FastAPI app directly and wrap with a2wsgi (No separate wsgi.py needed)
+from app.main import app
+from a2wsgi import ASGIMiddleware
+
+application = ASGIMiddleware(app)
 ```
 
 ## 5. Reload & Launch
-Click the **Reload** button on the Web tab. Your app will be live at `https://tonnie001.pythonanywhere.com`.
+Click the green **Reload** button at the top of the Web tab. Your app will be live at `https://tonnie001.pythonanywhere.com`.
